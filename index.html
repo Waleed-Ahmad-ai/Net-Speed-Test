@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SpeedTest Pro · Network Analyzer</title>
+
+    <!-- Font Awesome 6 (free) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===== RESET & BASE ===== */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0B1120;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+            color: #F1F5F9;
+        }
+
+        /* Aurora / Glow background */
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.5;
+            z-index: 0;
+            pointer-events: none;
+        }
+        body::before {
+            width: 600px;
+            height: 600px;
+            top: -200px;
+            right: -150px;
+            background: #1D4ED8;
+            /* deep blue */
+        }
+        body::after {
+            width: 500px;
+            height: 500px;
+            bottom: -150px;
+            left: -100px;
+            background: #0E7490;
+            /* cyan */
+        }
+
+        /* subtle grid overlay */
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        /* ===== CARD ===== */
+        .speed-card {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 740px;
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 48px;
+            padding: 44px 36px 48px;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo i {
+            font-size: 28px;
+            color: #38BDF8;
+            filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.3));
+        }
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #F8FAFC, #94A3B8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .badge {
+            background: rgba(56, 189, 248, 0.10);
+            border: 1px solid rgba(56, 189, 248, 0.15);
+            border-radius: 40px;
+            padding: 6px 18px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #BAE6FD;
+            letter-spacing: 0.4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge i {
+            font-size: 10px;
+            color: #38BDF8;
+        }
+
+        /* ===== SPEED GAUGE ===== */
+        .gauge-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 24px 0 16px;
+        }
+        .gauge-ring {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+        .gauge-ring svg {
+            transform: rotate(-90deg);
+            width: 200px;
+            height: 200px;
+        }
+        .gauge-ring .bg-circle {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.04);
+            stroke-width: 12;
+        }
+        .gauge-ring .progress-circle {
+            fill: none;
+            stroke: url(#gaugeGrad);
+            stroke-width: 12;
+            stroke-linecap: round;
+            stroke-dasharray: 565.48;
+            stroke-dashoffset: 565.48;
+            transition: stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.2));
+        }
+        .gauge-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .gauge-center .speed-value {
+            font-size: 52px;
+            font-weight: 700;
+            color: #FFFFFF;
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+        .gauge-center .speed-unit {
+            font-size: 15px;
+            font-weight: 500;
+            color: #94A3B8;
+            margin-top: 4px;
+        }
+        .gauge-center .speed-label {
+            font-size: 13px;
+            font-weight: 400;
+            color: #64748B;
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        /* ===== METRICS ===== */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin: 20px 0 32px;
+        }
+        .metric-item {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 24px;
+            padding: 18px 12px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: all 0.25s ease;
+            backdrop-filter: blur(4px);
+        }
+        .metric-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+        .metric-item .metric-icon {
+            font-size: 18px;
+            color: #38BDF8;
+            margin-bottom: 6px;
+            opacity: 0.9;
+        }
+        .metric-item .metric-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #F1F5F9;
+            letter-spacing: -0.3px;
+        }
+        .metric-item .metric-value.ping-value {
+            color: #FBBF24;
+        }
+        .metric-item .metric-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-top: 4px;
+        }
+        .metric-item .metric-sub {
+            font-size: 13px;
+            font-weight: 400;
+            color: #475569;
+        }
+
+        /* ===== BUTTON ===== */
+        .btn-test {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            width: 100%;
+            padding: 20px 28px;
+            border: none;
+            border-radius: 60px;
+            background: linear-gradient(135deg, #2563EB, #06B6D4);
+            color: #FFFFFF;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 8px 32px rgba(37, 99, 235, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-test::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 60px;
+            padding: 2px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        .btn-test:hover:not(:disabled) {
+            transform: translateY(-3px) scale(1.01);
+            box-shadow: 0 12px 48px rgba(37, 99, 235, 0.4);
+        }
+        .btn-test:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+        .btn-test:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.15);
+        }
+        .btn-test i {
+            font-size: 20px;
+            transition: transform 0.6s;
+        }
+        .btn-test.testing i {
+            animation: spin 1.2s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ===== STATUS ===== */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 24px;
+            font-size: 14px;
+            font-weight: 400;
+            color: #94A3B8;
+            min-height: 28px;
+        }
+        .status-bar .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #334155;
+            transition: all 0.4s;
+        }
+        .status-bar .dot.active {
+            background: #38BDF8;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+            animation: pulse-dot 1.2s ease-in-out infinite;
+        }
+        .status-bar .dot.done {
+            background: #4ADE80;
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.4;
+                transform: scale(0.7);
+            }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            .speed-card {
+                padding: 28px 18px 32px;
+                border-radius: 32px;
+            }
+            .gauge-ring {
+                width: 160px;
+                height: 160px;
+            }
+            .gauge-ring svg {
+                width: 160px;
+                height: 160px;
+            }
+            .gauge-center .speed-value {
+                font-size: 38px;
+            }
+            .gauge-center .speed-unit {
+                font-size: 13px;
+            }
+            .metrics {
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 10px;
+            }
+            .metric-item .metric-value {
+                font-size: 20px;
+            }
+            .btn-test {
+                font-size: 16px;
+                padding: 18px 20px;
+            }
+            .logo h1 {
+                font-size: 20px;
+            }
+            .badge {
+                font-size: 10px;
+                padding: 4px 14px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .metrics {
+                grid-template-columns: 1fr 1fr;
+            }
+            .metric-item:last-child {
+                grid-column: span 2;
+            }
+            .gauge-ring {
+                width: 140px;
+                height: 140px;
+            }
+            .gauge-ring svg {
+                width: 140px;
+                height: 140px;
+            }
+            .gauge-center .speed-value {
+                font-size: 32px;
+            }
+        }
+
+        /* ===== SVG DEFS ===== */
+        .hidden-defs {
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Grid Overlay -->
+    <div class="grid-overlay"></div>
+
+    <!-- SVG defs for gradient -->
+    <div class="hidden-defs">
+        <svg width="0" height="0">
+            <defs>
+                <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#3B82F6" />
+                    <stop offset="60%" stop-color="#06B6D4" />
+                    <stop offset="100%" stop-color="#38BDF8" />
+                </linearGradient>
+            </defs>
+        </svg>
+    </div>
+
+    <!-- ===== MAIN CARD ===== -->
+    <div class="speed-card">
+
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-bolt"></i>
+                <h1>SpeedTest</h1>
+            </div>
+            <span class="badge"><i class="fas fa-circle" style="font-size: 6px; color: #4ADE80;"></i> Live</span>
+        </div>
+
+        <!-- Gauge -->
+        <div class="gauge-wrapper">
+            <div class="gauge-ring">
+                <svg viewBox="0 0 200 200">
+                    <circle class="bg-circle" cx="100" cy="100" r="90" />
+                    <circle class="progress-circle" id="progressCircle" cx="100" cy="100" r="90" />
+                </svg>
+                <div class="gauge-center">
+                    <div class="speed-value" id="speedDisplay">0</div>
+                    <div class="speed-unit">Mbps</div>
+                    <div class="speed-label" id="speedLabel">Ready</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metrics">
+            <div class="metric-item">
+                <div class="metric-icon"><i class="fas fa-arrow-down"></i></div>
+                <div class="metric-value" id="downloadVal">0.00</div>
+                <div class="metric-label">Download</div>
+                <div class="metric-sub">Mbps</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-icon"><i class="fas fa-arrow-up"></i></div>
+                <div class="metric-value" id="uploadVal">0.00</div>
+                <div class="metric-label">Upload</div>
+                <div class="metric-sub">Mbps</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-icon"><i class="fas fa-clock"></i></div>
+                <div class="metric-value ping-value" id="pingVal">0</div>
+                <div class="metric-label">Ping</div>
+                <div class="metric-sub">ms</div>
+            </div>
+        </div>
+
+        <!-- Button -->
+        <button class="btn-test" id="testBtn">
+            <i class="fas fa-play"></i>
+            <span id="btnText">Start Test</span>
+        </button>
+
+        <!-- Status -->
+        <div class="status-bar">
+            <span class="dot" id="statusDot"></span>
+            <span id="statusText">Press "Start Test" to begin</span>
+        </div>
+
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ----- DOM refs -----
+            const progressCircle = document.getElementById('progressCircle');
+            const speedDisplay = document.getElementById('speedDisplay');
+            const speedLabel = document.getElementById('speedLabel');
+            const downloadVal = document.getElementById('downloadVal');
+            const uploadVal = document.getElementById('uploadVal');
+            const pingVal = document.getElementById('pingVal');
+            const testBtn = document.getElementById('testBtn');
+            const btnText = document.getElementById('btnText');
+            const statusText = document.getElementById('statusText');
+            const statusDot = document.getElementById('statusDot');
+
+            const CIRCUMFERENCE = 565.48;
+
+            // ----- state -----
+            let isRunning = false;
+            let abort = false;
+
+            // ----- helpers -----
+            function setGauge(percent) {
+                const offset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
+                progressCircle.style.strokeDashoffset = offset;
+            }
+
+            function setSpeed(val) {
+                speedDisplay.textContent = val;
+            }
+
+            function setStatus(text, type = 'idle') {
+                statusText.textContent = text;
+                statusDot.className = 'dot';
+                if (type === 'active') statusDot.classList.add('active');
+                else if (type === 'done') statusDot.classList.add('done');
+            }
+
+            function resetUI() {
+                setGauge(0);
+                setSpeed('0');
+                speedLabel.textContent = 'Ready';
+                downloadVal.textContent = '0.00';
+                uploadVal.textContent = '0.00';
+                pingVal.textContent = '0';
+                setStatus('Press "Start Test" to begin', 'idle');
+                testBtn.disabled = false;
+                testBtn.classList.remove('testing');
+                btnText.textContent = 'Start Test';
+                testBtn.querySelector('i').className = 'fas fa-play';
+            }
+
+            // ----- simulate speed test -----
+            function runSpeedTest() {
+                if (isRunning) return;
+                isRunning = true;
+                abort = false;
+
+                testBtn.disabled = true;
+                testBtn.classList.add('testing');
+                btnText.textContent = 'Testing…';
+                testBtn.querySelector('i').className = 'fas fa-spinner';
+
+                downloadVal.textContent = '0.00';
+                uploadVal.textContent = '0.00';
+                pingVal.textContent = '—';
+                setGauge(0);
+                setSpeed('0');
+                speedLabel.textContent = 'Measuring…';
+                setStatus('Initializing…', 'active');
+
+                // ----- 1. Ping simulation (0.8s) -----
+                const pingTime = 8 + Math.random() * 30;
+                setTimeout(() => {
+                    if (abort) { finish(); return; }
+                    pingVal.textContent = pingTime.toFixed(0);
+                    setStatus(`Ping: ${pingTime.toFixed(0)} ms`, 'active');
+
+                    // ----- 2. Download test (simulate 2.5s) -----
+                    let dlProgress = 0;
+                    const dlSteps = 40;
+                    const dlInterval = 60;
+                    const maxDl = 50 + Math.random() * 80;
+
+                    speedLabel.textContent = 'Downloading…';
+                    setStatus('Downloading…', 'active');
+
+                    let dlTimer = setInterval(() => {
+                        if (abort) { clearInterval(dlTimer);
+                            finish(); return; }
+                        dlProgress += 1;
+                        const pct = Math.min(dlProgress / dlSteps, 1);
+                        const currentDl = (pct * maxDl);
+                        const displayDl = currentDl.toFixed(1);
+                        downloadVal.textContent = displayDl;
+                        setGauge(pct * 90);
+                        setSpeed(displayDl);
+
+                        if (dlProgress >= dlSteps) {
+                            clearInterval(dlTimer);
+                            downloadVal.textContent = maxDl.toFixed(1);
+                            setGauge(90);
+                            setSpeed(maxDl.toFixed(1));
+
+                            // ----- 3. Upload test (simulate 2.0s) -----
+                            let ulProgress = 0;
+                            const ulSteps = 30;
+                            const ulInterval = 65;
+                            const maxUl = 20 + Math.random() * 50;
+
+                            speedLabel.textContent = 'Uploading…';
+                            setStatus('Uploading…', 'active');
+
+                            let ulTimer = setInterval(() => {
+                                if (abort) { clearInterval(ulTimer);
+                                    finish(); return; }
+                                ulProgress += 1;
+                                const pctU = Math.min(ulProgress / ulSteps, 1);
+                                const currentUl = (pctU * maxUl);
+                                uploadVal.textContent = currentUl.toFixed(1);
+
+                                if (ulProgress >= ulSteps) {
+                                    clearInterval(ulTimer);
+                                    uploadVal.textContent = maxUl.toFixed(1);
+
+                                    speedLabel.textContent = 'Complete';
+                                    setGauge(100);
+                                    setSpeed(maxDl.toFixed(1));
+                                    setStatus('Test complete! ✓', 'done');
+                                    btnText.textContent = 'Test Again';
+                                    testBtn.querySelector('i').className = 'fas fa-rotate';
+                                    testBtn.disabled = false;
+                                    testBtn.classList.remove('testing');
+                                    isRunning = false;
+                                }
+                            }, ulInterval);
+                        }
+                    }, dlInterval);
+                }, 800);
+            }
+
+            function finish() {
+                isRunning = false;
+                testBtn.disabled = false;
+                testBtn.classList.remove('testing');
+                btnText.textContent = 'Start Test';
+                testBtn.querySelector('i').className = 'fas fa-play';
+                setStatus('Cancelled', 'idle');
+                speedLabel.textContent = 'Ready';
+            }
+
+            // ----- event binding -----
+            testBtn.addEventListener('click', function(e) {
+                if (isRunning) {
+                    abort = true;
+                    isRunning = false;
+                    testBtn.disabled = false;
+                    testBtn.classList.remove('testing');
+                    btnText.textContent = 'Start Test';
+                    testBtn.querySelector('i').className = 'fas fa-play';
+                    setStatus('Cancelled', 'idle');
+                    speedLabel.textContent = 'Ready';
+                    return;
+                }
+                resetUI();
+                setTimeout(() => runSpeedTest(), 80);
+            });
+
+            // ----- initial reset -----
+            resetUI();
+
+            // ----- keyboard shortcut: Space -----
+            document.addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'Space') {
+                    e.preventDefault();
+                    testBtn.click();
+                }
+            });
+
+        })();
+    </script>
+
+</body>
+</html>
